@@ -1,0 +1,5 @@
+setup.py
+unet_architecture.egg-info/PKG-INFO
+unet_architecture.egg-info/SOURCES.txt
+unet_architecture.egg-info/dependency_links.txt
+unet_architecture.egg-info/top_level.txt
