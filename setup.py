@@ -1,10 +1,11 @@
 from setuptools import setup
 
-
-setup(
-    name="unet",
-    author="anson",
-    author_email="anson@cinnamon.is",
-    version='0.1',
-    description="A python package covers some unet for segmentation task"
-)
+setup(name='unet1',
+      version='0.1',
+      description='A package for unet models',
+      url='https://github.com/vnbot2/unet.git',
+      author='Anh Vo Tran Hai',
+      author_email='anson@cinnamon.is',
+      license='CINNAMON',
+      packages=['unet'],
+      zip_safe=False)
