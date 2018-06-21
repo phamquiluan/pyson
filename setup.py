@@ -7,5 +7,5 @@ setup(name='unet1',
       author='Anh Vo Tran Hai',
       author_email='anson@cinnamon.is',
       license='CINNAMON',
-      packages=['unet'],
+      packages=['unet', 'utils'],
       zip_safe=False)
