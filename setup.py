@@ -7,5 +7,5 @@ setup(name='pyson',
       author='Anh Vo Tran Hai',
       author_email='anson@cinnamon.is',
       license='CINNAMON',
-      packages=['unet', 'utils'],
+      packages=['segment', 'utils'],
       zip_safe=False)
