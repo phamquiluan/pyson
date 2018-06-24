@@ -4,6 +4,8 @@ from glob import glob
 import os
 import matplotlib.pyplot as plt
 
+
+#-------------------READ-WRITE-OPERATE------------------------------
 def get_paths(dir,input_type='png'):
     paths = glob(os.path.join(dir, '*.{}'.format(input_type)))
     assert len(paths) > 0, '\n\tDirectory:\t{}\n\tInput type:\t{} \n num of paths must be > 0'.format(dir, input_type)
@@ -14,28 +16,27 @@ def write_img(path, rgb):
     bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     return cv2.imwrite(path, bgr)
 
-def read_img(path, mode='rgb'):
+def read_img(path, is_gray=False):
     '''
-        Inputs: path
+        Inputs: path, mode 
         Return: rgb or gray depending on the "mode" argument
     '''
     img = cv2.imread(path)
-    if mode == 'rgb':
+    if not is_gray:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    elif mode == 'gray':
+    else:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     return img 
 
-def resize(img, f, is_ratio=True):
+
+# Resize operations
+def resize_by_factor(img, f):
+    '''
+        f: the ratio at which the input will be resize
+    '''
     if type(f) == tuple:
         if is_ratio:
             fx, fy = f
-        else:
-            assert type(f[0]) == int
-            h, w = img.shape[:2]
-            h_, w_ = f 
-            fx = w_/w
-            fy = h_/h
     elif type(f) == float:
         fx = fy = f 
     else:
@@ -43,6 +44,9 @@ def resize(img, f, is_ratio=True):
     
     return cv2.resize(img, (0, 0), fx=fx, fy = fy)
 
+def resize_by_size(img, size):
+    return cv2.resize(img, size)
+#----------------------------PLOT
 def plot_images(images, cls_true=None, cls_pred=None, space=0.3):    
     n = int(np.ceil(np.sqrt(len(images))))
     # Create figure with 3x3 sub-plots.
@@ -76,3 +80,40 @@ def show(inp, size=20):
     plt.figure(figsize=(size, size))
     plt.imshow(inp)
     plt.show()
+
+#--------------------------- CONTOUR 
+def findContours(thresh):
+    '''
+        Inputs: binary image
+        Outputs: contours, hierarchy
+    '''
+    im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    return contours, hierarchy[0]
+
+
+def sort_contours(cnts, method="left-to-right"):
+	# initialize the reverse flag and sort index
+	reverse = False
+	i = 0
+ 
+	# handle if we need to sort in reverse
+	if method == "right-to-left" or method == "bottom-to-top":
+		reverse = True
+ 
+	# handle if we are sorting against the y-coordinate rather than
+	# the x-coordinate of the bounding box
+	if method == "top-to-bottom" or method == "bottom-to-top":
+		i = 1
+ 
+	# construct the list of bounding boxes and sort them from top to
+	# bottom
+	boundingBoxes = [cv2.boundingRect(c) for c in cnts]
+	(cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes),
+		key=lambda b:b[1][i], reverse=reverse))
+ 
+	# return the list of sorted contours and bounding boxes
+	return (cnts, boundingBoxes)
+
+def putText(image, pos, text):
+    return cv2.putText(image, text, pos, cv2.FONT_HERSHEY_SIMPLEX,
+            1.0, (255, 255, 255), 2)

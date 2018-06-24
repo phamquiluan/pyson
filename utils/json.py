@@ -9,3 +9,5 @@ def load_json_from_path(path):
     with open(path, 'r') as f:
         data = json.load(f)
     return data
+
+
