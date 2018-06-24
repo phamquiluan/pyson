@@ -1,6 +1,7 @@
 import tensorflow as tf 
 import os
-
+from time import time
+import numpy as np
 def load_image(path):
     '''
     inputs must be converted to png file
@@ -10,24 +11,31 @@ def load_image(path):
     #raw -> image(range[0,255])
     img_png = tf.image.decode_png(raw)
     #range[0, 255]-> range[0, 1]
-    img_float = tf.image.convert_image_dtype(img_png)
+    img_float = tf.image.convert_image_dtype(img_png, dtype=tf.float32)
     return img_float
+
+
+def get_tensor_by_name(name):
+    name_on_device = '{}:0'.format(name)
+    return tf.get_default_graph().get_tensor_by_name(name_on_device)
 
 def export_generator(fn_generator, ngf, stride, crop_size, checkpoint, output_dir):
     CROP_SIZE = crop_size
     strides = [stride, stride]
     preprocess = lambda x: x*2-1
     deprocess = lambda x: (x+1)/2
-        # export the generator to a meta graph that can be imported later for standalone generation
+
     def extract_patches(image, k_size, strides):
         images = tf.extract_image_patches(tf.expand_dims(
             image, 0), k_size, strides, rates=[1, 1, 1, 1], padding='SAME')[0]
         images_shape = tf.shape(images)
+        print([images_shape[0]*images_shape[1], *k_size[1:3], 3])
         images_reshape = tf.reshape(
             images, [images_shape[0]*images_shape[1], *k_size[1:3], 3])
         images, n1, n2 = tf.cast(
             images_reshape, tf.uint8), images_shape[0], images_shape[1]
         return images, n1, n2
+
 
     def join_patches(images, n1, n2, k_size, strides):
         s1 = k_size[1]//2-strides[1]//2
@@ -123,7 +131,7 @@ class unet_model:
         saver.restore(self.sess, tf.train.latest_checkpoint(
             self.checkpoint))
 
-    def run(self, path, batch_size=8):
+    def run(self, feed_image, batch_size=8):
         batch_input, n1_val, n2_val = self.sess.run([self.batch_input_tensor, self.n1, self.n2], {self.inputs:feed_image})
         rv = []
         start = time()
