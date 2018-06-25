@@ -92,7 +92,7 @@ def get_generator_deepunet(generator_inputs, generator_outputs_channels, ngf, us
 
 
 
-def get_generator_unet(generator_inputs, generator_outputs_channels, ngf, use_drop=True, training=True):
+def get_generator_unet(generator_inputs, generator_outputs_channels, ngf, use_drop=True, training=True, verbal=True):
     '''
         generator_inputs:512x512x3
         outputs: for line and for text
@@ -103,7 +103,6 @@ def get_generator_unet(generator_inputs, generator_outputs_channels, ngf, use_dr
     with tf.variable_scope(scope_name):
         output = gen_conv(generator_inputs, ngf, strides=2)
         layers.append(output)
-        print(scope_name, layers[-1].shape[1:])
     layer_specs = [
         ngf * 2, # encoder_2: [batch, 128, 128, ngf] => [batch, 64, 64, ngf * 2]
         ngf * 4, # encoder_3: [batch, 64, 64, ngf * 2] => [batch, 32, 32, ngf * 4]
@@ -122,7 +121,6 @@ def get_generator_unet(generator_inputs, generator_outputs_channels, ngf, use_dr
             convolved = gen_conv(rectified, out_channels, strides=2)
             output = batchnorm(convolved, training)
             layers.append(output)
-            print(scope_name, layers[-1].shape[1:])
     layer_specs = [
         (ngf * 8, 0.5),   # decoder_8: [batch, 1, 1, ngf * 8] => [batch, 2, 2, ngf * 8 * 2]
         (ngf * 8, 0.5),   # decoder_7: [batch, 2, 2, ngf * 8 * 2] => [batch, 4, 4, ngf * 8 * 2]
@@ -161,8 +159,14 @@ def get_generator_unet(generator_inputs, generator_outputs_channels, ngf, use_dr
         input = tf.concat([layers[-1], layers[0]], axis=3)
         rectified = tf.nn.relu(input)
         logits = gen_deconv(rectified, generator_outputs_channels)
-        print(scope_name, logits.shape)
-    return logits
+        layers.append(logits)
+
+    if verbal:
+        print(generator_inputs.shape)
+        for layer in layers:
+            print(layers.shape)
+    return layers[-1]
+
 
 
 def load_image(path):
