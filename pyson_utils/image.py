@@ -133,15 +133,15 @@ def putText(image, pos, text):
 def split_train_test(path_to_dir, val_percent=.2):
     train_path = os.path.join(path_to_dir, 'train')
     val_path = os.path.join(path_to_dir, 'val')
+    for p in [train_path, val_path]: os.makedirs(p, exist_ok=True)
     files = get_paths(path_to_dir)
     np.random.shuffle(files)
     val_max_idx = int(len(files)*val_percent)
     i = 0
-    while i < val_max_idx:
+    for i in range(val_max_idx):
         file_name = files[i]
         os.system('mv {} {}'.format(file_name, val_path))
-        i += 1
-    while i < len(files):
+    for i in range(val_max_idx, len(files), 1):
         file_name = files[i]
         os.system('mv {} {}'.format(file_name, train_path))
     print('Train: {}, Val: {}'.format(len(get_paths(train_path)),
