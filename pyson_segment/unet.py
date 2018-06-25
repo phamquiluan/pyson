@@ -164,7 +164,7 @@ def get_generator_unet(generator_inputs, generator_outputs_channels, ngf, use_dr
     if verbal:
         print(generator_inputs.shape)
         for layer in layers:
-            print(layers.shape)
+            print(layer.shape)
     return layers[-1]
 
 
