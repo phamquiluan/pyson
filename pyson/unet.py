@@ -3,6 +3,7 @@ import os
 from time import time
 import numpy as np
 keras = tf.keras
+
 #------------------------UTILS-------------------
 def batchnorm(inputs, training):
     return tf.layers.batch_normalization(inputs, axis=3, epsilon=1e-5, momentum=0.1, training=training, gamma_initializer=tf.random_normal_initializer(1.0, 0.02))
@@ -14,7 +15,7 @@ def gen_conv(batch_input, out_channels, strides=1):
 def gen_deconv(batch_input, out_channels):
     # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
     initializer = tf.random_normal_initializer(0, 0.02)
-    return tf.layers.conv2d_transpose(batch_input, out_channels, kernel_size=4, strides=(2, 2), padding="same", kernel_initializer=initializer)
+    return tf.layers.conv2d_transpose(batch_input, out_channels, kernel_size=3, strides=(2, 2), padding="same", kernel_initializer=initializer)
 
 def lrelu(x, a):
     with tf.name_scope("lrelu"):
@@ -29,13 +30,11 @@ def conv_bn_relu(x, filters, training):
 def down_block(input, ngf,  training, pool_size):
     x = tf.layers.max_pooling2d(input, 2, 2)
     temp = conv_bn_relu(x, ngf, training)
-
     bn = batchnorm(gen_conv(temp, ngf), training)
     bn += x
     if pool_size == 4:
         bn = tf.layers.max_pooling2d(bn, 2, 2)
     act = tf.nn.relu(bn)
-    #print(act.shape)
     return bn, act
 
 def up_block(act, bn, ngf, use_drop,training):
@@ -161,11 +160,10 @@ def get_generator_unet(generator_inputs, generator_outputs_channels, ngf, use_dr
         rectified = tf.nn.relu(input)
         logits = gen_deconv(rectified, generator_outputs_channels)
         layers.append(logits)
-    # print("DONT SAY ANYTHING")
-    # if verbal:
-    #     print(generator_inputs.shape)
-    #     for layer in layers:
-    #         print(layer.shape)
+    if verbal:
+        print(generator_inputs.shape)
+        for layer in layers:
+            print(layer.shape)
     return layers[-1]
 
 
@@ -181,7 +179,6 @@ def load_image(path):
     #range[0, 255]-> range[0, 1]
     img_float = tf.image.convert_image_dtype(img_png, dtype=tf.float32)
     return img_float
-
 
 def get_tensor_by_name(name):
     name_on_device = '{}:0'.format(name)
@@ -282,7 +279,6 @@ class unet_model:
         self.sess = tf.Session()
         self.build()
 
-
     def build(self):
         meta_path = os.path.join(self.checkpoint, 'export.meta')
         tf.train.import_meta_graph(meta_path)
@@ -316,19 +312,12 @@ class unet_model:
 
 
 
-def keras_unet(crop_size=512,ngf=32):
-    with tf.variable_scope("generator_input"):
-        generator_inputs = keras.layers.Input(shape=[crop_size,crop_size,3])
-    generator_outputs_channels=2
-    ngf=64
-    use_drop=True
-    training=True
-    verbal=True
+def keras_unet(generator_inputs,generator_outputs_channels=2, ngf=32, use_drop=True, training=True):
 
     layers = []
-    with tf.variable_scope("encoder_1"):
-        _ = keras.layers.Conv2D(ngf, 3, 2, padding='same')(generator_inputs)
-        layers.append(_)
+
+    _ = keras.layers.Conv2D(ngf, 3, 2, padding='same')(generator_inputs)
+    layers.append(_)
 
     layer_specs = [
         ngf * 2, # encoder_2: [batch, 128, 128, ngf] => [batch, 64, 64, ngf * 2]
@@ -341,11 +330,11 @@ def keras_unet(crop_size=512,ngf=32):
     ]
     for out_channels in layer_specs:
         scope_name = "down%d" % (len(layers) + 1)
-        with tf.variable_scope(scope_name):
-            _ = keras.layers.LeakyReLU(.2)(_)
-            _ = keras.layers.Conv2D(out_channels, strides=2, kernel_size=3, padding='same')(_)
-            _ = keras.layers.BatchNormalization()(_)
-            layers.append(_)
+
+        _ = keras.layers.LeakyReLU(.2)(_)
+        _ = keras.layers.Conv2D(out_channels, strides=2, kernel_size=3, padding='same')(_)
+        _ = keras.layers.BatchNormalization()(_)
+        layers.append(_)
 
     layer_specs = [
         (ngf * 8, 0.5),   # decoder_8: [batch, 1, 1, ngf * 8] => [batch, 2, 2, ngf * 8 * 2]
@@ -360,25 +349,23 @@ def keras_unet(crop_size=512,ngf=32):
     num_encoder_layers = len(layers)
     for decoder_layer, (out_channels, dropout) in enumerate(layer_specs):
         skip_layer = num_encoder_layers - decoder_layer - 1
-        scope_name = "up%d" % (skip_layer + 1)
-        with tf.variable_scope(scope_name):
-            if decoder_layer == 0:
-                _ = layers[-1]
-            else:
-                _ = keras.layers.Concatenate()([layers[-1], layers[skip_layer]])#tf.concat([layers[-1], layers[skip_layer]], axis=3)
 
-            _ = keras.layers.Activation('relu')(_)
-            _ = keras.layers.Conv2DTranspose(out_channels, strides=2, kernel_size=3, padding='same')(_)
-            _ = keras.layers.BatchNormalization()(_)
 
-            if dropout > 0.0 and use_drop:
-                _ = keras.layers.Dropout(dropout)(_)
-            layers.append(_)
+        if decoder_layer == 0:
+            _ = layers[-1]
+        else:
+            _ = keras.layers.Concatenate()([layers[-1], layers[skip_layer]])#tf.concat([layers[-1], layers[skip_layer]], axis=3)
+
+        _ = keras.layers.Activation('relu')(_)
+        _ = keras.layers.Conv2DTranspose(out_channels, strides=2, kernel_size=3, padding='same')(_)
+        _ = keras.layers.BatchNormalization()(_)
+
+        if dropout > 0.0 and use_drop:
+            _ = keras.layers.Dropout(dropout)(_)
+        layers.append(_)
     scope_name = "outputs"
     with tf.variable_scope(scope_name):
         input = keras.layers.Concatenate(axis=-1)([layers[-1], layers[0]])#tf.concat([layers[-1], layers[0]], axis=3)
         rectified = keras.layers.Activation('relu')(input)
-        logits = keras.layers.Conv2DTranspose(generator_outputs_channels, strides=2, kernel_size=3)(rectified)
-        # outputs = keras.
-        layers.append(logits)
-    return tf.keras.models.Model([generator_inputs], [logits])
+        logits = keras.layers.Conv2DTranspose(generator_outputs_channels, strides=2, kernel_size=3, padding='same')(rectified)
+    return logits

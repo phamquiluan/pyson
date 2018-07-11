@@ -48,11 +48,17 @@ def read_json(path):
 
 # Image
 def write_img(path, rgb):
-    bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    return cv2.imwrite(path, bgr)
+    "if type float just convert to 255"
+    if type(rgb) is float:
+        rgb = (255*rgb).astype('uint8')
+    if len(rgb.shape) == 2:
+        return cv2.imwrite(path, rgb)
+    else:
+        bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+        return cv2.imwrite(path, bgr)
 
 
-def read_img(path, is_gray=False):
+def read_img(path, is_gray=False, output_is_float=False):
     '''
         Inputs: path, mode 
         Return: rgb or gray depending on the "mode" argument
@@ -62,6 +68,9 @@ def read_img(path, is_gray=False):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     else:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+    img = img/255. if output_is_float else img
+    
     return img
 
 
@@ -83,11 +92,18 @@ def resize_by_factor(img, f):
 
 def resize_by_size(img, size):
     return cv2.resize(img, size)
+
+
+def resize_to_recepfield(image, rcf=256):
+    # resize to a factor of the wanted receptive field
+    new_h, new_w = np.ceil(np.array(image.shape[:2])/rcf).astype(np.int32)*rcf
+    image = cv2.resize(image, (new_w, new_h))
+    return image
 # ----------------------------PLOT
 
 
 def plot_images(images, cls_true=None, cls_pred=None, space=0.3, mxn=None, size=5):
-    if n is None:
+    if mxn is None:
         n = int(np.ceil(np.sqrt(len(images))))
         mxn = (n, n)
     # Create figure with nxn sub-plots.
@@ -116,10 +132,13 @@ def plot_images(images, cls_true=None, cls_pred=None, space=0.3, mxn=None, size=
     plt.show()
 
 
-def show(inp, cmap=None, size=20):
+def show(inp, cmap=None, size=5):
     '''
         Input: either a path or image
     '''
+    if cmap is None:
+        if len(inp.shape)==2:
+            cmap='gray'
     img = read_img(inp) if type(inp) == str and os.path.exists(inp) else inp
     plt.figure(figsize=(size, size))
     plt.imshow(inp, cmap=cmap)
@@ -155,3 +174,23 @@ def sort_contours(cnts, method="left-to-right"):
 def putText(image, pos, text):
     return cv2.putText(image, text, pos, cv2.FONT_HERSHEY_SIMPLEX,
                        1.0, (255, 255, 255), 2)
+
+def random_sample_array(arr, num_of_sample=1):
+    l = len(arr)
+    return [arr[np.random.choice(l)] for _ in range(num_of_sample)]
+
+def to_gray(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    return gray
+
+def get_min_rect(c):
+    "input a contour and return the min box of it"
+    center, size, angle = cv2.minAreaRect(c)
+    rect = cv2.minAreaRect(c)
+    box = cv2.boxPoints(rect)
+    box = np.int0(box)
+    box = (box/args.resize_ratio).astype(np.int32)
+    return box
+# Augmentation
+
+from sklearn.model_selection import train_test_split
