@@ -194,3 +194,21 @@ def get_min_rect(c):
 # Augmentation
 
 from sklearn.model_selection import train_test_split
+
+
+
+##### Gradient split
+
+def generate_random_gradient(size):
+    from random import randint as rint
+    img = Image.new("RGB", (size), "#FFFFFF")
+    draw = ImageDraw.Draw(img)
+
+    r,g,b = rint(0,255), rint(0,255), rint(0,255)
+    dr = (rint(0,255) - r)/500.
+    dg = (rint(0,255) - g)/500.
+    db = (rint(0,255) - b)/500.
+    for i in range(500):
+        r,g,b = r+dr, g+dg, b+db
+        draw.line((i,0,i,500), fill=(int(r),int(g),int(b)))
+    return np.array(img)
