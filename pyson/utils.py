@@ -5,8 +5,6 @@ from glob import glob
 import os
 import matplotlib.pyplot as plt
 
-
-
 # Get paths
 def get_paths(dir, input_type='png'):
     paths = glob(os.path.join(dir, '*.{}'.format(input_type)))
@@ -41,7 +39,7 @@ def read_json(path):
         Input: path to json file
         Return: A dictionary of the json file
     '''
-    with open(path, 'r') as f:
+    with optimien(path, 'r') as f:
         data = json.load(f)
     return data
 

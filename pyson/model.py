@@ -15,6 +15,9 @@ class multi_digit:
         self.model = keras.models.load_model(save_path)
     def pred(self, image):
         return predict_multi_number(image, self.model)
+
+
+        
 def padding(image, output_shape=(82,310,1)):
     image = 1-image / 255
     p = 40/image.shape[0]
