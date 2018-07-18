@@ -212,3 +212,10 @@ def generate_random_gradient(size):
         r,g,b = r+dr, g+dg, b+db
         draw.line((i,0,i,500), fill=(int(r),int(g),int(b)))
     return np.array(img)
+
+def load_db(path_json):
+    img_dir = os.path.split(path_json)[0]
+    d = read_json(path_json)
+    values = list(d.values())
+    paths = [os.path.join(img_dir, path) for path in list(d.keys())]
+    return paths, values
