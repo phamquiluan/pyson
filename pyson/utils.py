@@ -39,7 +39,7 @@ def read_json(path):
         Input: path to json file
         Return: A dictionary of the json file
     '''
-    with optimien(path, 'r') as f:
+    with open(path, 'r') as f:
         data = json.load(f)
     return data
 
@@ -217,3 +217,24 @@ def load_db(path_json):
     values = list(d.values())
     paths = [os.path.join(img_dir, path) for path in list(d.keys())]
     return paths, values
+
+
+
+def save_model_keras(model, output_dir):
+    from tensorflow.python import keras
+    os.makedirs(output_dir, exist_ok=True)
+    model_json = model.to_json()
+    with open(os.path.join(output_dir, 'model_config.json'), "w") as json_file:
+        json_file.write(model_json)
+    model.save_weights(os.path.join(output_dir,'weights.h5'))
+    print("Saved model to disk")
+    
+def load_model_keras(output_dir):
+    from tensorflow.python import keras
+    json_file = open(os.path.join(output_dir, 'model_config.json'), 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    loaded_model = keras.models.model_from_json(loaded_model_json)
+    loaded_model.load_weights(os.path.join(output_dir,'weights.h5'))
+    print("Loaded model from disk")
+    return loaded_model
