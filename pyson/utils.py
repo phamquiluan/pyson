@@ -4,6 +4,7 @@ import numpy as np
 from glob import glob
 import os
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
 # Get paths
 def get_paths(dir, input_type='png'):
@@ -30,7 +31,6 @@ def split_train_test(path_to_dir, val_percent=.2):
         os.system('mv {} {}'.format(file_name, train_path))
     print('Train: {}, Val: {}'.format(len(get_paths(train_path)),
                                       get_paths(val_path)))
-
 
 
 # Json
@@ -104,16 +104,12 @@ def plot_images(images, cls_true=None, cls_pred=None, space=0.3, mxn=None, size=
     if mxn is None:
         n = int(np.ceil(np.sqrt(len(images))))
         mxn = (n, n)
-    # Create figure with nxn sub-plots.
     fig, axes = plt.subplots(*mxn)
     fig.subplots_adjust(hspace=space, wspace=space)
     fig.figsize=(size, size)
     for i, ax in enumerate(axes.flat):
-        # Plot image.
         if i < len(images):
-            
             ax.imshow(images[i], cmap='binary')
-            # Show true and predicted classes.
             if cls_pred is None and cls_true is not None:
                 xlabel = "True: {0}".format(cls_true[i])
             elif cls_pred is None and cls_true is not None:
@@ -121,19 +117,20 @@ def plot_images(images, cls_true=None, cls_pred=None, space=0.3, mxn=None, size=
                     cls_true[i], cls_pred[i])
             else:
                 xlabel = None
-            # Show the classes as the label on the x-axis.
             if xlabel is not None:
                 ax.set_xlabel(xlabel)
-            # Remove ticks from the plot.
             ax.set_xticks([])
             ax.set_yticks([])
     plt.show()
 
-
-def show(inp, cmap=None, size=5):
+def show(inp, cmap=None, size=None):
     '''
         Input: either a path or image
     '''
+    if type(inp) is str:
+        assert os.path.exists(inp)
+        inp = read_img(inp)
+    size = min(5, inp.shape[1]//65)
     if cmap is None:
         if len(inp.shape)==2:
             cmap='gray'
@@ -191,7 +188,6 @@ def get_min_rect(c):
     return box
 # Augmentation
 
-from sklearn.model_selection import train_test_split
 
 
 
@@ -217,8 +213,13 @@ def load_db(path_json):
     values = list(d.values())
     paths = [os.path.join(img_dir, path) for path in list(d.keys())]
     return paths, values
-
-
+def load_multiple_db(dbs):
+    paths, labels = load_db(dbs[0])
+    for db in dbs[1:]:
+        rv_ = load_db(db)
+        paths += rv_[0]
+        labels += rv_[1]
+    return paths, labels
 
 def save_model_keras(model, output_dir):
     from tensorflow.python import keras
@@ -229,12 +230,20 @@ def save_model_keras(model, output_dir):
     model.save_weights(os.path.join(output_dir,'weights.h5'))
     print("Saved model to disk")
     
-def load_model_keras(output_dir):
+def load_model_keras(output_dir, weight_name='weights.h5'):
     from tensorflow.python import keras
     json_file = open(os.path.join(output_dir, 'model_config.json'), 'r')
     loaded_model_json = json_file.read()
     json_file.close()
     loaded_model = keras.models.model_from_json(loaded_model_json)
-    loaded_model.load_weights(os.path.join(output_dir,'weights.h5'))
+    loaded_model.load_weights(os.path.join(output_dir, weight_name))
     print("Loaded model from disk")
     return loaded_model
+    
+if __name__ == '__main__':
+    path = 'sample_image/1.png'
+    image = read_img(path)
+    print('Test show from path')
+    show(path)
+    print('Test show from np image')
+    show(image)
