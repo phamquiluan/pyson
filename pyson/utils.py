@@ -188,9 +188,6 @@ def get_min_rect(c):
     return box
 # Augmentation
 
-
-
-
 ##### Gradient split
 
 def generate_random_gradient(size):
