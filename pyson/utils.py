@@ -215,7 +215,7 @@ def load_multiple_db(dbs):
     for db in dbs[1:]:
         rv_ = load_db(db)
         paths += rv_[0]
-        labels += rv_[1]
+        labels += str(rv_[1])
     return paths, labels
 
 def save_model_keras(model, output_dir):
