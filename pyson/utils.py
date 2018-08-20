@@ -130,7 +130,7 @@ def show(inp, cmap=None, size=None):
     if type(inp) is str:
         assert os.path.exists(inp)
         inp = read_img(inp)
-    size = min(5, inp.shape[1]//65)
+    size = max(5, inp.shape[1]//65)
     if cmap is None:
         if len(inp.shape)==2:
             cmap='gray'
@@ -204,18 +204,30 @@ def generate_random_gradient(size):
         draw.line((i,0,i,500), fill=(int(r),int(g),int(b)))
     return np.array(img)
 
-def load_db(path_json):
+def load_db(path_json, max_length=10e12):
     img_dir = os.path.split(path_json)[0]
     d = read_json(path_json)
-    values = list(d.values())
+    labels = list(d.values())
     paths = [os.path.join(img_dir, path) for path in list(d.keys())]
-    return paths, values
-def load_multiple_db(dbs):
-    paths, labels = load_db(dbs[0])
+    for i, (p, l) in enumerate(zip(paths, labels)):
+
+        if not type(l) is str \
+                or not os.path.exists(p)\
+                or len(l) > max_length :
+
+            paths.remove(p)
+            labels.remove(l)
+
+        print('\rChecking database: {:0.2f} %'.format(i/len(paths)), end='')
+    assert len(paths) == len(labels), '{}-{}'.format(len(paths), len(labels))
+    return paths, labels
+
+def load_multiple_db(dbs, max_length=10e12):
+    paths, labels = load_db(dbs[0], max_length)
     for db in dbs[1:]:
-        rv_ = load_db(db)
+        rv_ = load_db(db, max_length)
         paths += rv_[0]
-        labels += str(rv_[1])
+        labels += rv_[1]
     return paths, labels
 
 def save_model_keras(model, output_dir):
