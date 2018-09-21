@@ -249,6 +249,57 @@ def load_model_keras(output_dir, weight_name='weights.h5'):
     print("Loaded model from disk")
     return loaded_model
     
+
+def get_angle(p1, p2):
+    x1, y1 = p1
+    x2, y2 = p2
+    dx = abs(x1- x2)
+    dy = abs(y1- y2)
+    return np.argtan(dy/dx)*180 
+
+def mask2cells2(mor1, input_path):
+    def is_rect(cnt):
+        x,y,w,h = cv2.boundingRect(cnt)
+        area = cv2.contourArea(cnt)
+        if area > 0 and w*h >0 and area / w*h > 0.6:
+            return True
+        else:
+            return False
+    def get_num_cell(hiers):
+        x = hiers[:,-1]
+        unique, counts = np.unique(x, return_counts=True)
+        return unique[1:]
+
+    # mor2 = cv2.morphologyEx(mor1, cv2.MORPH_CLOSE, np.ones([1,50]))
+    cnts, hiers = findContours(mor1)
+    mask_debug = np.zeros([*mor1.shape, 3], dtype='uint8')
+    i = 0
+    j = 1
+    k = 2
+    out_cnts = {}
+    for ci, (cnt, h) in enumerate(zip(cnts, hiers)):
+        if is_rect(cnt):
+            color1 = int((i%10*255/9))+1
+            color2 = int((j%10*255/9))+1
+            color3 = int((k%10*255/9))+1
+            i+=np.random.choice(10)
+            j+=np.random.choice(10)
+            k+=np.random.choice(10)
+            cv2.drawContours(mask_debug,[cnt], 0, (color1,color2,color3), -1)
+            rect = cv2.minAreaRect(cnt)
+            box = cv2.boxPoints(rect)
+            cnt = np.int0(box)
+            if h[-1] == -1:
+                out_cnts['table_{}'.format(ci)] = cnt
+            else:
+                out_cnts['cell_{}_table_{}'.format(ci,h[-1])] = cnt
+
+    write_img('mask_debug.png', mor1)
+    return out_cnts, mask_debug
+
+
+
+
 if __name__ == '__main__':
     path = 'sample_image/1.png'
     image = read_img(path)
