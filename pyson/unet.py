@@ -58,13 +58,13 @@ def up_block(act, bn, ngf, use_drop,training):
 #--------------------------------GENERATOR
 # def get_generator_deepunet(generator_inputs, generator_outputs_channels, 
 # ngf, use_drop=True, training=True):
-def get_generator_deepunet(generator_inputs, generator_outputs_channels, ngf, use_drop=True, \
-    training=True, verbal=True):
+def get_generator_deepunet(generator_inputs, generator_outputs_channels, ngf, class_name, use_drop=True,
+                           training=True, verbal=True):
     '''
         generator_inputs:512x512x3
         outputs: for line and for text
     '''
-    
+
     assert generator_outputs_channels is not None
     x = conv_bn_relu(generator_inputs, 64, training)
     net = conv_bn_relu(x, ngf, training)
@@ -83,11 +83,14 @@ def get_generator_deepunet(generator_inputs, generator_outputs_channels, ngf, us
     temp5 = up_block(temp4, bn3, ngf, use_drop=use_drop, training=training)
     temp6 = up_block(temp5, bn2, ngf, use_drop=use_drop, training=training)
     temp7 = up_block(temp6, bn1, ngf, use_drop=use_drop, training=training)
-    logits = gen_conv(temp7, generator_outputs_channels)
+    with tf.variable_scope('encode_output_{}'.format(class_name)):
+        logits = gen_conv(temp7, generator_outputs_channels)
 
-    layers = [x, act1, act2, act3, act4, act5, act6, act7, temp1, temp2, temp3, temp4, temp5, temp6, temp7, logits]
+    layers = [x, act1, act2, act3, act4, act5, act6, act7,
+              temp1, temp2, temp3, temp4, temp5, temp6, temp7, logits]
     if verbal:
-        for l in layers: print(l.shape)
+        for l in layers:
+            print(l.shape)
     return logits
 
 

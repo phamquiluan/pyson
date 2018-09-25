@@ -2,18 +2,15 @@ import tensorflow as tf
 import os
 from time import time
 import numpy as np
-
 from tensorflow.python import keras
 from tensorflow.python.keras.layers import *
-
-# from pyson.utils import *
+from unet import get_generator_deepunet
 from time import time
 import tensorflow as tf
 from skimage import measure
-#from tabel_utils_anson import *
 import cv2
 import json
-
+from utils import read_img, resize_by_factor, timeit, findContours, show
 
 class Point:
     def __init__(self, x, y):
@@ -29,7 +26,7 @@ class Point:
 
 class Line:
     def __init__(self, a, b):
-        self.type = self.build(a, b)
+        self.type = self._build(a, b)
 
     def __call__(self):
         return self.p_min, self.p_max
@@ -108,18 +105,30 @@ class AnalyseLine:
         prepare: a model to get a dictionary of {'inputs':, 'outputs':} 
         and a session to run it
     '''
-    def __init__(self, input_path, model=None, sess=None, useNoneIntersect=True, thresh_rect=.6, thresh_model_min=150, epsilon=11, output_dir='__table_analisys__'):
+    def __init__(self, input_path,
+                 unet_model,
+                 useNoneIntersect=True,
+                 thresh_rect=.6,
+                 thresh_model_min=150,
+                 epsilon=11,
+                 output_dir='__table_analisys__'):
+
         self.thresh_rect = thresh_rect
         self.thresh_model_min = thresh_model_min
         self.useNoneIntersect = useNoneIntersect
         self.epsilon = epsilon
         self.intersect_points = []
         self.output_dir = output_dir
-        if model is not None and sess is not None:
-            self.get_model_output(input_path, model, sess)
+        self.unet_model = unet_model
+        self.model_output = self.unet_model.predict(input_path)
+        self._build()
 
-    def _build(self, model_output):
-        self.model_output = model_output
+    def _build(self):
+        '''
+            From model output decompose it to self.v_lines, and self.h_lines
+        '''
+        assert self.model_output is not None, 'call function get_model_output to\
+         get the model output into the pipeline'
 
         def f_(img, mode='h', img_2=None):
             assert img_2 is not None, self.useNoneIntersect is not None
@@ -153,7 +162,7 @@ class AnalyseLine:
 
             return pad, lines
         if len(self.model_output.shape) == 3:
-            gray = cv2.cvtColor(model_output, cv2.COLOR_BGR2GRAY)
+            gray = cv2.cvtColor(self.model_output, cv2.COLOR_BGR2GRAY)
         else:
             gray = self.model_output
         gray = cv2.bitwise_not(gray)
@@ -170,8 +179,6 @@ class AnalyseLine:
 
         self.processed = ngang+doc
         self.display = None
-
-
 
     def show(self):
         show(self.display, size=5)
@@ -203,7 +210,7 @@ class AnalyseLine:
         self.processed = mask
 
     def merge_input(self):
-        
+
         mask = self.display
         if len(mask.shape) == 2:
             z = np.zeros_like(mask)
@@ -214,20 +221,6 @@ class AnalyseLine:
             inp = np.stack([inp]*3, axis=-1)
         inp = 0.2*inp + 0.8*mask
         self.display = inp.astype('uint8')
-
-    
-    def get_model_output(self, path, model, sess):
-        img_inp = read_img(path, True, False)
-        f = max(img_inp.shape[:2]) / 2500
-        if f > 1:
-            img_inp = resize_by_factor(img_inp, 1/f)
-        self.img_inp = img_inp
-        img = np.expand_dims(img_inp, 0)
-        img = np.expand_dims(img, -1)/255.0
-        output = sess.run(model['outputs'][0, ..., 0], {model['inputs']: img})
-        model_output = (output*255).astype('uint8')
-        self.image_name = os.path.split(path)[-1].split('.')[0]
-        self.build(model_output)
 
     def mask2cells(self):
         def is_rect(cnt):
@@ -337,54 +330,57 @@ class AnalyseLine:
         return self.cnts, self.display
 
 
-def load_model(checkpoint_path = 'models_checkpoint'):
-    def get_model(class_name, inputs, targets=None, ngf=16,
-                weight_loss=1, optimizer=tf.train.AdamOptimizer, image_scale=[0, 1], use_drop=None):
-        if use_drop is None:
-            if targets is None:
-                use_drop = False
-            else:
-                use_drop = True
-        def caculate_loss(logits, targets, weight=1):
-            targets = (targets + image_scale[0]) / (image_scale[1] - image_scale[0]) 
-            loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(
-                logits=logits, targets=targets, pos_weight=weight))
-            return loss
-        with tf.name_scope('scope_{}'.format(class_name)):
+class UnetModel():
+    def __init__(self, class_name, checkpoint):
+        self.class_name = class_name
+        self.max_height_width = 2048
+        self._build(checkpoint=checkpoint)
+
+    def _build(self, checkpoint='models_checkpoint'):
+        inputs = tf.placeholder(tf.float32, [None, None, None, 1])
+        self.model = self._fn_build_model(inputs, ngf=32)
+        saver = tf.train.Saver(max_to_keep=5)
+        self.sess = tf.Session()
+        latest_checkpoint = tf.train.latest_checkpoint(checkpoint)
+        saver.restore(self.sess, latest_checkpoint)
+        self.model, self.sess
+
+    def _fn_build_model(self, inputs, targets=None, ngf=16,
+                        weight_loss=1, optimizer=tf.train.AdamOptimizer, image_scale=[0, 1]):
+        '''
+            params:
+        '''
+        with tf.name_scope('scope_{}'.format(self.class_name)):
             with tf.variable_scope('unet', reuse=tf.AUTO_REUSE):
                 logits = get_generator_deepunet(inputs, 1, ngf,
-                                                '{}_logits'.format(class_name), verbal=False, use_drop=use_drop)
+                                                '{}_logits'.format(self.class_name), 
+                                                verbal=False, 
+                                                use_drop=False)
                 outputs = tf.sigmoid(logits)
-            # Get all params (shared and exclusive)
-            rt_dict = {'inputs': inputs, 'outputs': outputs}
-            if targets is not None:  # Train mode
-                rt_dict['targets'] = targets
-                rt_dict['params'] = [var for var in tf.trainable_variables()
-                                    if var.name.startswith('unet')]
-                for param in rt_dict['params']:
-                    if 'encode_output_' in param.name:
-                        if not class_name in param.name:
-                            rt_dict['params'].remove(param)
-                # caculate loss
-                rt_dict['loss'] = caculate_loss(
-                    logits, targets, weighted_class[class_name])
+        return {'inputs': inputs, 'outputs': outputs}
+    @timeit
+    def predict(self, path):
+        img_inp = read_img(path, True, False)
+        f = max(img_inp.shape[:2]) / self.max_height_width
+        if f > 1:
+            img_inp = resize_by_factor(img_inp, 1/f)
+        img = np.expand_dims(img_inp, 0)
 
-                if optimizer is not None:
-                    rt_dict['grads'] = optimizer.compute_gradients(loss=rt_dict['loss'],
-                                                                var_list=rt_dict['params'])
-        return rt_dict
+        img = np.expand_dims(img, -1)/255.0
+        output = self.sess.run(self.model['outputs'][0, ..., 0], {
+                               self.model['inputs']: img})
+        model_output = (output*255).astype('uint8')
+        cv2.imwrite('modeloutput.png', model_output)
+        return model_output
 
-    inputs = tf.placeholder(tf.float32, [None, None, None, 1])
-    model = get_model('border', inputs, ngf=32)
-    saver = tf.train.Saver(max_to_keep=5)
-    sess = tf.Session()
-    latest_checkpoint = tf.train.latest_checkpoint(checkpoint_path)
-    saver.restore(sess, latest_checkpoint)
-    return model, sess
+    def __str__(self):
+        return 'Model: {}, Inputs: {}, Output: {}'.format(self.class_name, self.model['inputs'].shape, self.model['outputs'].shape)
+
 
 if __name__ == '__main__':
-    model, sess = load_model(checkpoint_path = 'models_checkpoint')
-    model_analizer = AnalyseLine(img_path, model, sess)
+    img_path = '/Users/bi/Downloads/pdftoimage/Usen_invoice_1/Usen_invoice_1-3.jpg'
+    unet_model = UnetModel('border', 'models_checkpoint')
+    model_analizer = AnalyseLine(img_path, unet_model)
     model_analizer.adjust()
     model_analizer.mask2cells()
     model_analizer.show()
