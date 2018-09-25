@@ -313,6 +313,23 @@ def timeit(method):
     return timed
 
 
+def skeleton(img):
+    element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
+    done = False
+    while(not done):
+        eroded = cv2.erode(img, element)
+        temp = cv2.dilate(eroded, element)
+        temp = cv2.subtract(img, temp)
+        skel = cv2.bitwise_or(skel, temp)
+        img = eroded.copy()
+
+        zeros = size - cv2.countNonZero(img)
+        if zeros == size:
+            done = True
+    kernel = np.ones(shape=[args.line_size, args.line_size])
+    _ = cv2.dilate(skel, kernel, iterations=1)
+    return _
+
 if __name__ == '__main__':
     path = 'sample_image/1.png'
     image = read_img(path)
