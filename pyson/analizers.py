@@ -12,6 +12,7 @@ import cv2
 import json
 from utils import read_img, resize_by_factor, timeit, findContours, show
 
+
 class Point:
     def __init__(self, x, y):
         self.x = x
@@ -105,6 +106,7 @@ class AnalyseLine:
         prepare: a model to get a dictionary of {'inputs':, 'outputs':} 
         and a session to run it
     '''
+
     def __init__(self, input_path,
                  unet_model,
                  useNoneIntersect=True,
@@ -353,11 +355,13 @@ class UnetModel():
         with tf.name_scope('scope_{}'.format(self.class_name)):
             with tf.variable_scope('unet', reuse=tf.AUTO_REUSE):
                 logits = get_generator_deepunet(inputs, 1, ngf,
-                                                '{}_logits'.format(self.class_name), 
-                                                verbal=False, 
+                                                '{}_logits'.format(
+                                                    self.class_name),
+                                                verbal=False,
                                                 use_drop=False)
                 outputs = tf.sigmoid(logits)
         return {'inputs': inputs, 'outputs': outputs}
+
     @timeit
     def predict(self, path):
         img_inp = read_img(path, True, False)
