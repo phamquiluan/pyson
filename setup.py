@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='pyson',
-      version='1.1',
+      version='1.2',
       description='A package for unet models',
       url='https://github.com/vnbot2/pyson.git',
       author='Anh Vo Tran Hai',
