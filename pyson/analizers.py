@@ -333,12 +333,12 @@ class AnalyseLine:
 
 
 class UnetModel():
-    def __init__(self, class_name, checkpoint):
+    def __init__(self, class_name, checkpoint='models_checkpoint'):
         self.class_name = class_name
         self.max_height_width = 2048
         self._build(checkpoint=checkpoint)
 
-    def _build(self, checkpoint='models_checkpoint'):
+    def _build(self, checkpoint):
         inputs = tf.placeholder(tf.float32, [None, None, None, 1])
         self.model = self._fn_build_model(inputs, ngf=32)
         saver = tf.train.Saver(max_to_keep=5)
@@ -365,6 +365,7 @@ class UnetModel():
     @timeit
     def predict(self, path):
         img_inp = read_img(path, True, False)
+        h, w = img_inp.shape[:2]
         f = max(img_inp.shape[:2]) / self.max_height_width
         if f > 1:
             img_inp = resize_by_factor(img_inp, 1/f)
@@ -374,8 +375,7 @@ class UnetModel():
         output = self.sess.run(self.model['outputs'][0, ..., 0], {
                                self.model['inputs']: img})
         model_output = (output*255).astype('uint8')
-        cv2.imwrite('modeloutput.png', model_output)
-        return model_output
+        return cv2.resize(model_output,(w, h))
 
     def __str__(self):
         return 'Model: {}, Inputs: {}, Output: {}'.format(self.class_name, self.model['inputs'].shape, self.model['outputs'].shape)
