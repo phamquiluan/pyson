@@ -37,16 +37,29 @@ def down_block(input, ngf,  training, pool_size):
     act = tf.nn.relu(bn)
     return bn, act
 
-def up_block(act, bn, ngf, use_drop,training):
-    bn_shape = tf.shape(bn)
-    h, w = bn_shape[1], bn_shape[2]
-    x = tf.image.resize_images(
-        act,
+def tf_reshape_tensor(inputs, tf_target_shape):
+    '''
+        params
+            inputs: tensorflow input tensor
+            tf_target_shape: a tf.shape object
+        return:
+            a tensor with targeted shape
+    '''
+    h, w = tf_target_shape[1], tf_target_shape[2]
+    tensor_reshaped = tf.image.resize_images(
+        inputs,
         (h, w),
         method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
         align_corners=False
     )
-    temp = tf.concat([bn, x], axis=-1)
+    return tensor_reshaped
+
+def up_block(act, bn, ngf, use_drop,training, concat=True):
+    x = tf_reshape_tensor(act, tf.shape(bn))
+    if concat:
+        temp = tf.concat([bn, x], axis=-1)
+    else:
+        temp = x
     temp = conv_bn_relu(temp, ngf, training)
     bn = batchnorm(gen_conv(temp, ngf), training)
     output = tf.nn.relu(bn)

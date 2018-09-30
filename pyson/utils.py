@@ -122,17 +122,17 @@ def plot_images(images, cls_true=None, cls_pred=None, space=0.3, mxn=None, size=
             ax.set_yticks([])
     plt.show()
 
-def show(inp, cmap=None, size=None):
+def show(inp, size=None, cmap='gray'):
     '''
         Input: either a path or image
     '''
+    if len(inp.shape) == 4:
+        inp = inp[0]
+    inp = np.squeeze(inp)
     if type(inp) is str:
         assert os.path.exists(inp)
         inp = read_img(inp)
     size = max(5, inp.shape[1]//65)
-    if cmap is None:
-        if len(inp.shape)==2:
-            cmap='gray'
     img = read_img(inp) if type(inp) == str and os.path.exists(inp) else inp
     plt.figure(figsize=(size, size))
     plt.imshow(inp, cmap=cmap)
