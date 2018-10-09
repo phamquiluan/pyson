@@ -108,7 +108,8 @@ class AnalyseLine:
     '''
 
     def __init__(self, input_path,
-                 unet_model,
+                 unet_model=None,
+                 model_output=None,
                  useNoneIntersect=True,
                  thresh_rect=.6,
                  thresh_model_min=150,
@@ -121,8 +122,12 @@ class AnalyseLine:
         self.epsilon = epsilon
         self.intersect_points = []
         self.output_dir = output_dir
-        self.unet_model = unet_model
-        self.model_output = self.unet_model.predict(input_path)
+        if use_model is None:
+            assert model_output is not None
+            self.model_output = model_output
+        else:
+            self.unet_model = unet_model
+            self.model_output = self.unet_model.predict(input_path)
         self._build()
 
     def _build(self):
@@ -283,6 +288,9 @@ class AnalyseLine:
         self.display = mask
 
     def adjust(self):
+        '''
+        This process return h_lines, and v_lines
+        '''
         def f_(h_lines, v_lines):
             '''
                 mask: only for debug
