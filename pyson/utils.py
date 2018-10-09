@@ -132,8 +132,8 @@ def show(inp, size=None, cmap='gray', dpi=300):
     if type(inp) is str:
         assert os.path.exists(inp)
         inp = read_img(inp)
-	if size is None:
-		size = max(5, inp.shape[1]//65)
+    if size is None:
+        size = max(5, inp.shape[1]//65)
     img = read_img(inp) if type(inp) == str and os.path.exists(inp) else inp
     plt.figure(figsize=(size, size), dpi=dpi)
     plt.imshow(inp, cmap=cmap)
