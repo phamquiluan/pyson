@@ -1,4 +1,5 @@
 pyson/__pycached__/
+**/*.DS_*
 .vscode
 pyson/__pycache__/
 pyson/__pycache__

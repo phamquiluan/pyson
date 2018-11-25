@@ -1,6 +1,15 @@
 import cv2
 import matplotlib.pyplot as plt
 
+def get_min_rect(c):
+    "input a contour and return the min box of it"
+    center, size, angle = cv2.minAreaRect(c)
+    rect = cv2.minAreaRect(c)
+    box = cv2.boxPoints(rect)
+    box = np.int0(box)
+    box = (box/args.resize_ratio).astype(np.int32)
+    return box
+
 def get_skeleton(img):
     """ Get skeleton mask of a binary image 
         Arguments:
@@ -199,12 +208,3 @@ def putText(image, pos, text):
 def random_sample_array(arr, num_of_sample=1):
     l = len(arr)
     return [arr[np.random.choice(l)] for _ in range(num_of_sample)]
-
-def get_min_rect(c):
-    "input a contour and return the min box of it"
-    center, size, angle = cv2.minAreaRect(c)
-    rect = cv2.minAreaRect(c)
-    box = cv2.boxPoints(rect)
-    box = np.int0(box)
-    box = (box/args.resize_ratio).astype(np.int32)
-    return box
