@@ -2,7 +2,7 @@ import cv2
 import matplotlib.pyplot as plt
 
 def get_min_rect(c):
-    "input a contour and return the min box of it"
+    """input a contour and return the min box of it"""
     center, size, angle = cv2.minAreaRect(c)
     rect = cv2.minAreaRect(c)
     box = cv2.boxPoints(rect)
